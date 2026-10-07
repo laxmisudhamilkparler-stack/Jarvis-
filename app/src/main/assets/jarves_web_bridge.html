@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarves Action Bridge Inspector</title>
+  <style>
+    :root {
+      --bg: #0F172A;
+      --card: #1E293B;
+      --primary: #6366F1;
+      --accent: #06B6D4;
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --success: #10B981;
+      --danger: #EF4444;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h2 {
+      margin: 0 0 4px 0;
+      font-size: 1.25rem;
+      background: linear-gradient(135deg, #6366F1, #EC4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p {
+      margin: 0 0 16px 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .badge.connected {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+    .badge.disconnected {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    button {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid #334155;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+    button:active {
+      transform: scale(0.97);
+      background: #334155;
+    }
+    .btn-full {
+      grid-column: span 2;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #4F46E5);
+      border: none;
+      font-weight: 600;
+    }
+    .console {
+      background: #090D16;
+      border: 1px solid #1E293B;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      height: 180px;
+      overflow-y: auto;
+      color: #A5B4FC;
+    }
+    .log-entry {
+      margin-bottom: 6px;
+      word-break: break-all;
+    }
+    .log-success { color: #34D399; }
+    .log-error { color: #F87171; }
+    .log-info { color: #60A5FA; }
+  </style>
+</head>
+<body>
+  <h2>Jarves Native Action Bridge</h2>
+  <p>JavaScript-to-Native Android bridge tester</p>
+
+  <div id="statusBadge" class="badge disconnected">Checking Bridge...</div>
+
+  <div class="btn-grid">
+    <button class="btn-primary btn-full" onclick="testWhatsApp()">
+      💬 Open WhatsApp (Native)
+    </button>
+    <button onclick="testApp('YouTube')">
+      ▶ Open YouTube
+    </button>
+    <button onclick="testApp('Instagram')">
+      📷 Open Instagram
+    </button>
+    <button onclick="testApp('Settings')">
+      ⚙ Open Settings
+    </button>
+    <button onclick="testApp('NonExistentApp')">
+      ⚠️ Open Non-Existent App
+    </button>
+    <button onclick="testCall('9876543210')">
+      📞 Call 9876543210
+    </button>
+    <button onclick="testContact('Mom')">
+      👤 Call Contact 'Mom'
+    </button>
+    <button onclick="testContact('Rahul')">
+      👥 Call Contact 'Rahul'
+    </button>
+    <button class="btn-full" onclick="testUrl('https://google.com')">
+      🌐 Open Web URL
+    </button>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+    <span style="font-size:0.75rem; color:var(--muted); font-weight:600;">BRIDGE CONSOLE LOG</span>
+    <span style="font-size:0.75rem; color:var(--accent); cursor:pointer;" onclick="clearLogs()">Clear</span>
+  </div>
+  <div id="console" class="console"></div>
+
+  <script>
+    const logContainer = document.getElementById('console');
+    const badge = document.getElementById('statusBadge');
+
+    function log(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = 'log-entry log-' + type;
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logContainer.appendChild(el);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function clearLogs() {
+      logContainer.innerHTML = '';
+    }
+
+    // Bridge resolution: supports window.AndroidAppActionBridge or window.Android
+    function getBridge() {
+      if (window.AndroidAppActionBridge) return window.AndroidAppActionBridge;
+      if (window.Android) return window.Android;
+      return null;
+    }
+
+    function checkBridge() {
+      const bridge = getBridge();
+      if (bridge && typeof bridge.isNativeBridgeAvailable === 'function' && bridge.isNativeBridgeAvailable()) {
+        badge.className = 'badge connected';
+        badge.textContent = '● Native Android Bridge Connected';
+        log('Native bridge detected and active.', 'success');
+      } else {
+        badge.className = 'badge disconnected';
+        badge.textContent = '○ Web Fallback Mode (Bridge Unavailable)';
+        log('Native bridge unavailable. Operating in browser fallback mode.', 'info');
+      }
+    }
+
+    window.addEventListener('load', checkBridge);
+    setTimeout(checkBridge, 500);
+
+    function testWhatsApp() {
+      const bridge = getBridge();
+      if (bridge && bridge.openWhatsApp) {
+        log('Executing native openWhatsApp()...', 'info');
+        const res = bridge.openWhatsApp();
+        log('Result: ' + res, 'success');
+      } else {
+        log('Native bridge unavailable. Opening WhatsApp deep link/web fallback...', 'info');
+        window.open('https://web.whatsapp.com', '_blank');
+      }
+    }
+
+    function testApp(appName) {
+      const bridge = getBridge();
+      if (bridge && bridge.openApp) {
+        log('Executing native openApp("' + appName + '")...', 'info');
+        const res = bridge.openApp(appName);
+        try {
+          const parsed = JSON.parse(res);
+          if (parsed.success) {
+            log('App launched successfully: ' + appName, 'success');
+          } else {
+            log('App launch handled: ' + parsed.message, 'error');
+            if (parsed.suggested_alternatives) {
+              log('Alternatives: ' + parsed.suggested_alternatives.join(' | '), 'info');
+            }
+          }
+        } catch(e) {
+          log('Result: ' + res, 'info');
+        }
+      } else {
+        log('Browser fallback: opening search for ' + appName, 'info');
+        window.open('https://www.google.com/search?q=' + encodeURIComponent(appName), '_blank');
+      }
+    }
+
+    function testCall(phone) {
+      const bridge = getBridge();
+      if (bridge && bridge.makeCall) {
+        log('Executing native makeCall("' + phone + '")...', 'info');
+        const res = bridge.makeCall(phone);
+        log('Result: ' + res, 'success');
+      } else {
+        log('Browser fallback: triggering tel:' + phone, 'info');
+        window.location.href = 'tel:' + phone;
+      }
+    }
+
+    function testContact(name) {
+      const bridge = getBridge();
+      if (bridge && bridge.callContact) {
+        log('Executing native callContact("' + name + '")...', 'info');
+        const res = bridge.callContact(name);
+        try {
+          const parsed = JSON.parse(res);
+          if (parsed.success) {
+            log('Calling contact ' + parsed.contact_name + ' at ' + parsed.phone_number, 'success');
+          } else if (parsed.error === 'multiple_matches') {
+            log('Multiple matches found (' + parsed.count + '). Clarification required.', 'info');
+          } else {
+            log('Contact not found or permission needed: ' + parsed.message, 'error');
+          }
+        } catch(e) {
+          log('Result: ' + res, 'info');
+        }
+      } else {
+        log('Browser fallback cannot access device contacts natively.', 'error');
+      }
+    }
+
+    function testUrl(url) {
+      const bridge = getBridge();
+      if (bridge && bridge.openUrl) {
+        log('Executing native openUrl("' + url + '")...', 'info');
+        const res = bridge.openUrl(url);
+        log('Result: ' + res, 'success');
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+  </script>
+</body>
+</html>
